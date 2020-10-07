@@ -1,0 +1,200 @@
+<html>
+	<head>
+		<title>Simulador JVM</title>
+		<style>
+			table, th, td 
+			{
+				border: 1px solid black;
+				text-align: center;
+			}
+			td
+			{
+				background-color: #90EE90;
+			}
+		</style>
+	</head>
+	<body style="margin: 0;overflow-x: hidden;overflow-y: hidden;">
+		<div id="header" style="border: 1px solid black;width: 100%;height: 10%;">
+			<h1 style="text-align: center;">Simulador JVM Memory Leak</h1>	
+		</div>
+		<div id="csrdiv" style="width: 32%;float: left;height: 60%;margin-top: 1%;">
+			<img id="ordemcsr" src="./CallCenter.png" style="width: 40%;height: 40%;margin-left: 30%;"><br>
+			<button onclick="allocateObject('Ordem')" style="margin-left: 30%;width: 160px;">Adicionar Ordem</button><br>
+			<img id="ticketcsr" src="./CallCenter.png" style="width: 40%;height: 40%;;margin-left: 30%;"><br>
+			<button onclick="allocateObject('Chamado')" style="margin-left: 30%;width: 160px;">Abrir Chamado</button>
+		</div>
+		<div id="simulatordiv" style="width: 38%;float: left;height: 90%;"> 
+			<h1 style="text-align: left;">Aplicação</h1>	
+			<p>Memória Heap: 1000 MB</p>
+			<p id="allocated">Memória Alocada: 0 MB</p>
+			<p id="available">Memória Disponível: 1000 MB</p>
+			<p id="message">Mensagem: </p>
+			<div id="memorydiv" style="border: 2px solid black;height: 45%;width: 70%;">
+				<table id="jvmmemory" style="max-height: 100%;width: 100%;">
+					<th>Memória JVM</th>
+				</table>
+			</div>
+			<br>
+			<button onclick="runGarbageCollector('default')" style="margin-left: 50px;">Chamar Garbage Collector</button>
+			<button onclick="restartJVM()">Restart JVM</button>
+		</div id="simulatordiv">
+		<div id="info" style="float: left;width: 28%;margin-left: 10px;">
+			<h1 style="text-align: left;">Cenários</h1>	
+			<p>Threads sem problemas de alocação e desalocação de memória</p>
+			<button id="start1" onclick="startScenario('scenario1')">Iniciar</button>
+			<button id="reset1" onclick="resetScenario('scenario1')">Parar</button>
+			<p>Problema de desalocação de memória de threads relacionadas à ordens</p>
+			<button id="start2" onclick="startScenario('scenario2')">Iniciar</button>
+			<button id="reset2" onclick="resetScenario('scenario2')">Parar</button>
+		</div>
+	</body>
+</html>
+<script>
+var order = 0;
+var ticket = 0;
+var scenarioToRun;
+
+function allocateObject(nameObject)
+{	
+	let allocatedMemory = document.getElementById("allocated");
+	let availableMemory = document.getElementById("available");
+	let message = document.getElementById("message");
+	let memory = document.getElementById("jvmmemory");
+	let newAllocatedMemory = (parseInt(allocatedMemory.innerHTML.split(" ")[2]) + 100);
+	
+	if(newAllocatedMemory > 1000)
+	{
+		message.innerHTML = "Mensagem: Não há espaço para alocação de novo objeto (OutOfMemory Error)";
+		document.getElementById("memorydiv").setAttribute("style", "border: 2px solid red;height: 45%;width: 70%;");
+		
+		if(nameObject == "Chamado")
+		{
+			document.getElementById("ticketcsr").src = "./CallCenterError.png";
+		}
+		else
+		{
+			document.getElementById("ordemcsr").src = "./CallCenterError.png";
+		}
+	}
+	else
+	{
+		let newRow = document.createElement("tr");
+		let newObject = document.createElement("td");
+		newRow.appendChild(newObject);
+		memory.appendChild(newRow);
+		allocatedMemory.innerHTML = "Memória Alocada: " + newAllocatedMemory + " MB";
+		let newAvailableMemory = (parseInt(availableMemory.innerHTML.split(" ")[2]) - 100);
+		availableMemory.innerHTML = "Memória Disponível: " + newAvailableMemory + " MB";
+		message.innerHTML = "Mensagem: Novo objeto alocado";
+		
+		if(nameObject == "Chamado")
+		{	
+			ticket = ticket + 1;
+			newObject.innerHTML = nameObject + " " + ticket;
+			document.getElementById("ticketcsr").src = "./CallCenter.png";
+		}
+		else
+		{
+			order = order + 1;
+			newObject.innerHTML = nameObject + " " + order;
+			newObject.setAttribute("style", "background-color: #FF6347;");
+			document.getElementById("ordemcsr").src = "./CallCenter.png";
+		}
+	}
+}
+
+function runGarbageCollector(scenario)
+{
+	let memory = document.getElementById("jvmmemory");
+	let allocatedMemory = document.getElementById("allocated");
+	let availableMemory = document.getElementById("available");
+	let message = document.getElementById("message");
+	let newAvailableMemory = 0;
+	
+	for(let i = memory.rows.length - 1; i > 0;i--)
+	{
+		let row = memory.rows[i];
+		if(row.innerHTML.includes("Chamado") || scenario == "scenario1" || scenario == "default")
+		{
+			memory.deleteRow(i);
+			let newAllocatedMemory = (parseInt(allocatedMemory.innerHTML.split(" ")[2]) - 100);
+			allocatedMemory.innerHTML = "Memória Alocada: " + newAllocatedMemory + " MB";
+			newAvailableMemory = (parseInt(availableMemory.innerHTML.split(" ")[2]) + 100);
+			availableMemory.innerHTML = "Memória Disponível: " + newAvailableMemory + " MB";
+		}
+	}
+	
+	if(newAvailableMemory > 0)
+	{
+		document.getElementById("memorydiv").setAttribute("style", "border: 2px solid black;height: 45%;width: 70%;");
+		message.innerHTML = "Mensagem: Garbage Collector executado";
+	}
+}
+
+function restartJVM()
+{
+	document.getElementById("allocated").innerHTML = "Memória Alocada: 0 MB";
+	document.getElementById("available").innerHTML = "Memória Disponível: 1000 MB";
+	document.getElementById("message").innerHTML = "Mensagem: ";
+	document.getElementById("memorydiv").setAttribute("style", "border: 2px solid black;height: 45%;width: 70%;");
+	let memory = document.getElementById("jvmmemory");
+	
+	for(let i = memory.rows.length - 1; i >= 1;i--)
+	{
+		memory.deleteRow(i);
+	}
+}
+
+function startScenario(scenario)
+{
+	document.getElementById("ticketcsr").src = "./CallCenter.png";
+	document.getElementById("ordemcsr").src = "./CallCenter.png";
+	restartJVM();
+	scenarioToRun = setInterval(runScenario, 1000);
+	document.getElementById("start1").setAttribute("disabled", true);
+	document.getElementById("start2").setAttribute("disabled", true);
+	
+	if(scenario == "scenario1")
+	{
+		document.getElementById("reset2").setAttribute("disabled", true);
+	}
+	else
+	{
+		document.getElementById("reset1").setAttribute("disabled", true);
+	}
+	
+	function runScenario()
+	{
+		if(Math.floor(Math.random() * 2) + 1 == 1)
+			allocateObject("Ordem");
+		else 
+			allocateObject("Chamado");
+			
+		
+		function runGC()
+		{		
+			if(document.getElementById("jvmmemory").rows.length >= 8)
+			{
+				runGarbageCollector(scenario);
+			}
+		}
+		setTimeout(runGC, 500);
+	}
+}
+
+function resetScenario(scenario)
+{
+	clearInterval(scenarioToRun);
+	document.getElementById("start1").removeAttribute("disabled");
+	document.getElementById("start2").removeAttribute("disabled");
+	
+	if(scenario == "scenario1")
+	{
+		document.getElementById("reset2").removeAttribute("disabled");
+	}
+	else
+	{
+		document.getElementById("reset1").removeAttribute("disabled");
+	}
+}
+</script>
